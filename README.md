@@ -131,6 +131,16 @@ kubectl port-forward pod/express-demo-express-chart-<POD-ID> 8000:8000
 curl http://localhost:8000
 ```
 
+> **注意**: ポートフォワーディングは、ターミナルセッションが終了すると停止します。バックグラウンドで実行する場合は、`&`を付けて実行し、プロセスIDを記録しておきます。
+> ```bash
+> kubectl port-forward pod/express-demo-express-chart-<POD-ID> 8000:8000 &
+> echo $! > port-forward.pid
+> ```
+> 後で停止する場合:
+> ```bash
+> kill $(cat port-forward.pid)
+> ```
+
 #### 方法2: NodePort経由
 ```bash
 # 実際に割り当てられたNodePortを確認
@@ -269,4 +279,97 @@ kind delete cluster --name express-demo || true
 - **Operator**：公式 Cache Operator サンプルを同様に GitOps 管理
 
 > **メモリ上限** : t3.small では Pod 合計メモリを 1 GiB 未満に抑えると安定します。Express API の `node --max-old-space-size=128` などで制御してみてください。
+
+## 🔄 イメージ更新手順
+
+### タグ更新方針
+
+このプロジェクトでは、イメージのバージョン管理のためにタグ更新方針を採用しています。`values.yaml`で特定のタグを指定し、新しいバージョンをリリースする際にタグを更新します。
+
+```yaml
+image:
+  repository: 986154984217.dkr.ecr.ap-northeast-1.amazonaws.com/container-nodejs-api-8000
+  tag: v1.0.0  # バージョン番号を指定
+  pullPolicy: Always
+```
+
+### 新しいバージョンのリリース手順
+
+1. **新しいイメージのビルドとプッシュ**:
+   ```bash
+   # ECRにログイン
+   aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin 986154984217.dkr.ecr.ap-northeast-1.amazonaws.com
+
+   # イメージをビルド
+   docker build -t container-nodejs-api-8000:v1.0.1 .
+
+   # ECRリポジトリにタグ付け
+   docker tag container-nodejs-api-8000:v1.0.1 986154984217.dkr.ecr.ap-northeast-1.amazonaws.com/container-nodejs-api-8000:v1.0.1
+
+   # ECRにプッシュ
+   docker push 986154984217.dkr.ecr.ap-northeast-1.amazonaws.com/container-nodejs-api-8000:v1.0.1
+   ```
+
+2. **values.yamlの更新**:
+   ```bash
+   # values.yamlを編集してタグを更新
+   sed -i 's/tag: v1.0.0/tag: v1.0.1/' express-chart/values.yaml
+   ```
+
+3. **変更をGitリポジトリにコミット**:
+   ```bash
+   git add express-chart/values.yaml
+   git commit -m "Update image tag to v1.0.1"
+   git push origin development
+   ```
+
+4. **ArgoCDを使用してアプリケーションを更新**:
+   ```bash
+   # ArgoCDにログイン
+   argocd login localhost:8080
+
+   # アプリケーションを同期
+   argocd app sync express-demo
+   ```
+
+5. **更新の確認**:
+   ```bash
+   # ポートフォワーディングを設定
+   kubectl port-forward pod/$(kubectl get pods -l app.kubernetes.io/name=express-chart -o jsonpath='{.items[0].metadata.name}') 8000:8000
+
+   # 別のターミナルで確認
+   curl http://localhost:8000/posts
+   ```
+
+### ロールバック手順
+
+特定のバージョンにロールバックする場合は、以下の手順を実行します：
+
+1. **values.yamlのタグを更新**:
+   ```bash
+   # values.yamlを編集してタグを更新
+   sed -i 's/tag: v1.0.1/tag: v1.0.0/' express-chart/values.yaml
+   ```
+
+2. **変更をGitリポジトリにコミット**:
+   ```bash
+   git add express-chart/values.yaml
+   git commit -m "Rollback to v1.0.0"
+   git push origin development
+   ```
+
+3. **ArgoCDを使用してアプリケーションを更新**:
+   ```bash
+   argocd app sync express-demo
+   ```
+
+### タグ更新方針のメリット
+
+1. **バージョン管理**: 各リリースに明確なバージョン番号が付与されるため、どのバージョンがデプロイされているかが分かりやすくなります。
+
+2. **ロールバックの容易さ**: 問題が発生した場合、以前のバージョンに簡単にロールバックできます。
+
+3. **環境の一貫性**: 開発、テスト、本番環境で同じバージョンのイメージを使用することで、環境間の一貫性が保たれます。
+
+4. **変更の追跡**: どのバージョンでどのような変更が行われたかを追跡しやすくなります。
 
