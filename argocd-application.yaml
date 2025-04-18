@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/kurosawa-kuro/kind-express-argo-manual-02.git
-    targetRevision: main
+    targetRevision: development
     path: express-chart
     helm:
       valueFiles:
