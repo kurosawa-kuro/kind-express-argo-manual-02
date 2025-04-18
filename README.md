@@ -373,3 +373,64 @@ image:
 
 4. **変更の追跡**: どのバージョンでどのような変更が行われたかを追跡しやすくなります。
 
+## 🔄 レプリカ数の変更チュートリアル
+
+### レプリカ数を1から2に変更する手順
+
+1. **values.yamlの編集**:
+   ```bash
+   # values.yamlを編集してreplicaCountを2に変更
+   sed -i 's/replicaCount: 1/replicaCount: 2/' express-chart/values.yaml
+   ```
+
+2. **変更をGitリポジトリにコミット**:
+   ```bash
+   git add express-chart/values.yaml
+   git commit -m "Update replicaCount from 1 to 2"
+   git push origin development
+   ```
+
+3. **ArgoCDを使用してアプリケーションを更新**:
+   ```bash
+   # ArgoCDにログイン
+   argocd login localhost:8080
+
+   # アプリケーションを同期
+   argocd app sync express-demo
+   ```
+
+4. **Pod数の確認**:
+   ```bash
+   # Podの一覧を表示
+   kubectl get pods -l app.kubernetes.io/name=express-chart
+   ```
+
+5. **各Podへのアクセス確認**:
+   ```bash
+   # 各Podにポートフォワーディングを設定
+   kubectl port-forward pod/$(kubectl get pods -l app.kubernetes.io/name=express-chart -o jsonpath='{.items[0].metadata.name}') 8001:8000 &
+   kubectl port-forward pod/$(kubectl get pods -l app.kubernetes.io/name=express-chart -o jsonpath='{.items[1].metadata.name}') 8002:8000 &
+
+   # 別のターミナルで確認
+   curl http://localhost:8001/posts
+   curl http://localhost:8002/posts
+   ```
+
+### レプリカ数を変更するメリット
+
+1. **可用性の向上**: 複数のPodを実行することで、1つのPodが失敗してもサービスが継続して提供されます。
+
+2. **負荷分散**: 複数のPodにトラフィックを分散させることで、各Podの負荷を軽減できます。
+
+3. **スケーラビリティ**: トラフィックの増加に応じて、レプリカ数を増やすことで、アプリケーションのスケーラビリティを向上させることができます。
+
+4. **ローリングアップデート**: 複数のPodがあることで、ローリングアップデートがスムーズに行われ、ダウンタイムを最小限に抑えることができます。
+
+### 注意点
+
+- **リソース消費**: レプリカ数を増やすと、クラスタのリソース消費も増加します。t3.smallインスタンスでは、メモリ使用量に注意が必要です。
+
+- **データの一貫性**: 複数のPodが同じデータを共有する場合、データの一貫性を保つための仕組みが必要です。
+
+- **ポートフォワーディング**: 複数のPodにポートフォワーディングを設定する場合、異なるポート番号を使用する必要があります。
+
