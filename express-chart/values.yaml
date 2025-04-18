@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: 986154984217.dkr.ecr.ap-northeast-1.amazonaws.com/container-nodejs-api-8000
-  tag: latest
+  tag: v1.0.0  # バージョン番号を指定
   pullPolicy: Always
 
 service:
