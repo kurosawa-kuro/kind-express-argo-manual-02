@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: express-demo
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/kurosawa-kuro/kind-express-argo-manual-02.git
+    targetRevision: main
+    path: express-chart
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy: {}   # Manual Sync

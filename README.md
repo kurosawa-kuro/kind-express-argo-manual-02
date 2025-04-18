@@ -167,15 +167,17 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443 &
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
 ```
 
+uTkEFf8bdN9PQFbt
+
 ### 2‑2. GitHub リポジトリ（public）に Push
 ```bash
 cd ~/dev/kind-express-argo-manual-02
 git init
 git add .
 git commit -m "express manual sync step"
-git branch -M main
-git remote add origin https://github.com/<YOUR-USER>/kind-express-argo-manual-02.git
-git push -u origin main
+git branch -M development
+git remote add origin https://github.com/kurosawa-kuro/kind-express-argo-manual-02.git
+git push -u origin development
 ```
 
 ### 2‑3. Application 定義
@@ -189,8 +191,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/<YOUR-USER>/kind-express-argo-manual-02.git
-    targetRevision: main
+    repoURL: https://github.com/kurosawa-kuro/kind-express-argo-manual-02.git
+    targetRevision: development
     path: express-chart
     helm:
       valueFiles:
